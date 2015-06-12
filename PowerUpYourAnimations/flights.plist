@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>price</key>
+		<string>$500</string>
+		<key>arriving</key>
+		<string>21:05</string>
+		<key>departing</key>
+		<string>18:15</string>
+	</dict>
+	<dict>
+		<key>price</key>
+		<string>$412</string>
+		<key>arriving</key>
+		<string>18:20</string>
+		<key>departing</key>
+		<string>15:30</string>
+	</dict>
+	<dict>
+		<key>price</key>
+		<string>$222</string>
+		<key>arriving</key>
+		<string>17:00</string>
+		<key>departing</key>
+		<string>14:10</string>
+	</dict>
+	<dict>
+		<key>price</key>
+		<string>$207</string>
+		<key>arriving</key>
+		<string>13:20</string>
+		<key>departing</key>
+		<string>11:30</string>
+	</dict>
+</array>
+</plist>
