@@ -31,8 +31,8 @@ class AudioViewController: UIViewController {
 
         UIView.animateWithDuration(0.5, delay: 0.0, options: .CurveEaseOut | .Repeat | .Autoreverse, animations: {
             dot.transform = CATransform3DMakeScale(1.4, 10, 1.0)
-        }, completion: nil)
-        
+            }, completion: nil)
+
         r.instanceCount = 35
         r.instanceDelay = 0.1
         r.instanceTransform = CATransform3DMakeTranslation(20.0, 0.0, 0.0)
@@ -40,16 +40,16 @@ class AudioViewController: UIViewController {
         UIView.animateWithDuration(1.25, delay: 0.0, options: .Repeat | .Autoreverse, animations: {
             r.instanceTransform = CATransform3DMakeTranslation(10.0, 0.0, 0.0)
         }, completion: nil)
-        
-        r.instanceGreenOffset = -0.03
+
     }
+    
 }
 
 /*
 
 UIView.animateWithDuration(0.5, delay: 0.0, options: .CurveEaseOut | .Repeat | .Autoreverse, animations: {
-    dot.transform = CATransform3DMakeScale(1.4, 10, 1.0)
-    }, completion: nil)
+dot.transform = CATransform3DMakeScale(1.4, 10, 1.0)
+}, completion: nil)
 
 
 r.instanceCount = 35

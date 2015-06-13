@@ -24,6 +24,7 @@ class TableCellAnimator: NSObject, UIViewControllerAnimatedTransitioning {
         //make a snapshot of the selected cell
         let cellView = fromVC.selectedCellSnapshot()
         transitionContext.containerView().addSubview(cellView)
+
         
         let width = fromVC.view.bounds.size.width
         toVC.view.transform = CGAffineTransformMakeTranslation(width, 0.0)
@@ -38,7 +39,7 @@ class TableCellAnimator: NSObject, UIViewControllerAnimatedTransitioning {
             
         }, completion:nil).animateWithDuration(duration/4, animations: {
             //2nd animation
-            cellView.center.y = fromVC.topLayoutGuide.length + cellView.bounds.size.height/2
+            cellView.center.y = cellView.bounds.size.height/2 + fromVC.topLayoutGuide.length
             
         }).animateWithDuration(duration/4, animations: {
             //3rd animation
@@ -50,12 +51,13 @@ class TableCellAnimator: NSObject, UIViewControllerAnimatedTransitioning {
             
         }, completion: {_ in
             //animation completed
-            cellView.removeFromSuperview()
+            
             fromVC.view.transform = CGAffineTransformIdentity
             transitionContext.completeTransition(!transitionContext.transitionWasCancelled())
         })
             
     }
+    
 }
 
 /*
@@ -67,5 +69,4 @@ cellView.center.y = cellView.bounds.size.height/2 + fromVC.topLayoutGuide.length
 
 cellView.alpha = 0.0
 
-cellView.removeFromSuperview()
 */

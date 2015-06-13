@@ -84,3 +84,4 @@ class TimelineViewController: UIViewController, UITableViewDelegate, UITableView
         btnMask.title = masks[currentMaskIndex]
     }
 }
+
