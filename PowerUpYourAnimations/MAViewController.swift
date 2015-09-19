@@ -34,7 +34,8 @@ class MAViewController: UIViewController {
         super.touchesMoved(touches, withEvent: event)
         
         // make the selection frame rect
-        let location = (touches.first as! UITouch).locationInView(view)
+        guard let location = touches.first?.locationInView(view) else {return}
+        
         let selectionRect = CGRect(
             x: view.center.x - abs(location.x - view.center.x),
             y: view.center.y - abs(location.y - view.center.y),

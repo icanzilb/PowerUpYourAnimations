@@ -33,7 +33,7 @@ class CoreImageAnimator: UIPercentDrivenInteractiveTransition, UIViewControllerA
             let fromVC = nav.topViewController as! TimelineViewController
             let toVC = transitionContext.viewControllerForKey(UITransitionContextToViewControllerKey) as! PhotoDetailViewController
             
-            transitionContext.containerView().addSubview(toVC.view)
+            transitionContext.containerView()?.addSubview(toVC.view)
             
             toVC.view.backgroundColor = UIColor.clearColor()
             toVC.imageView.center.y += 20.0
