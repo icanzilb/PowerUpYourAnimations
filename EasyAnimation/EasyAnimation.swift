@@ -36,6 +36,7 @@ private struct PendingAnimation {
 
 private class AnimationContext {
     var duration: NSTimeInterval = 1.0
+    var currentTime: NSTimeInterval = {CACurrentMediaTime()}()
     var delay: NSTimeInterval = 0.0
     var options: UIViewAnimationOptions? = nil
     var pendingAnimations = [PendingAnimation]()
@@ -43,48 +44,79 @@ private class AnimationContext {
     //spring additions
     var springDamping: CGFloat = 0.0
     var springVelocity: CGFloat = 0.0
+    
+    var nrOfUIKitAnimations: Int = 0
+}
+
+private class CompletionBlock {
+    var context: AnimationContext
+    var completion: ((Bool) -> Void)
+    var nrOfExecutions: Int = 0
+    
+    init(context c: AnimationContext, completion cb: (Bool) -> Void) {
+        context = c
+        completion = cb
+    }
+    
+    func wrapCompletion(completed: Bool) {
+        // if no uikit animations uikit calls completion immediately
+        if context.nrOfUIKitAnimations > 0 ||
+            
+            //if no layer animations DO call completion
+            context.pendingAnimations.count == 0 ||
+            
+            //skip every other call if no uikit and there are layer animations
+            //(e.g. jump over the first immediate uikit call to completion)
+            ++nrOfExecutions % 2 == 0 {
+                
+                completion(completed)
+        }
+    }
 }
 
 private var didEAInitialize = false
 private var didEAForLayersInitialize = false
 private var activeAnimationContexts = [AnimationContext]()
 
-// MARK: animatable properties
+// MARK: EA animatable properties
 
 private let vanillaLayerKeys = [
-    "anchorPoint",
-    "backgroundColor", "backgroundFilters", "borderColor", "borderWidth", "bounds",
-    "compositingFilter", "contents", "contentsRect", "cornerRadius", "doubleSided",
-    "filters", "hidden", "mask", "masksToBounds", "opacity", "position",
-    "shadowColor", "shadowOffset", "shadowOpacity", "shadowPath", "shadowRadius",
-    "sublayers", "sublayerTransform", "transform", "zPosition"
+    "anchorPoint", "backgroundColor", "borderColor", "borderWidth", "bounds",
+    "contentsRect", "cornerRadius",
+    "opacity", "position",
+    "shadowColor", "shadowOffset", "shadowOpacity", "shadowRadius",
+    "sublayerTransform", "transform", "zPosition"
 ]
 
 private let specializedLayerKeys: [String: [String]] = [
     CAEmitterLayer.self.description(): ["emitterPosition", "emitterZPosition", "emitterSize", "spin", "velocity", "birthRate", "lifetime"],
+    //TODO: test animating arrays, eg colors & locations
     CAGradientLayer.self.description(): ["colors", "locations", "endPoint", "startPoint"],
     CAReplicatorLayer.self.description(): ["instanceDelay", "instanceTransform", "instanceColor", "instanceRedOffset", "instanceGreenOffset", "instanceBlueOffset", "instanceAlphaOffset"],
+    //TODO: test animating paths
     CAShapeLayer.self.description(): ["path", "fillColor", "lineDashPhase", "lineWidth", "miterLimit", "strokeColor", "strokeStart", "strokeEnd"],
     CATextLayer.self.description(): ["fontSize", "foregroundColor"]
 ]
 
+public extension UIViewAnimationOptions {
+    //CA Fill modes
+    static let FillModeNone = UIViewAnimationOptions(rawValue: 0)
+    static let FillModeForwards = UIViewAnimationOptions(rawValue: 1024)
+    static let FillModeBackwards = UIViewAnimationOptions(rawValue: 2048)
+    static let FillModeBoth = UIViewAnimationOptions(rawValue: 1024 + 2048)
+}
+
 /**
-    A `UIView` extension that adds super powers to animateWithDuration:animations: and the like.
-    Check the README for code examples of what features this extension adds.
+A `UIView` extension that adds super powers to animateWithDuration:animations: and the like.
+Check the README for code examples of what features this extension adds.
 */
 
 extension UIView {
     
-    public var animationPath: CGPath? {
-        get {
-            return nil
-        }
-        set {
-            //TODO: add keyframe path animation
-        }
-    }
+    //TODO: experiment more with path animations
+    //public var animationPath: CGPath? { set {} get {return nil}}
     
-    // MARK: setup UIView
+    // MARK: UIView animation & action methods
     
     override public static func initialize() {
         if !didEAInitialize {
@@ -115,37 +147,43 @@ extension UIView {
         
     }
     
-    // MARK: actionForLayer:forKey: replacement
-    
     func EA_actionForLayer(layer: CALayer!, forKey key: String!) -> CAAction! {
-
+        
         let result = EA_actionForLayer(layer, forKey: key)
         
-        if activeAnimationContexts.count > 0 {
-            if let result = result as? NSNull {
+        if let activeContext = activeAnimationContexts.last {
+            if let _ = result as? NSNull {
                 
-                if contains(vanillaLayerKeys, key) ||
-                    (specializedLayerKeys[layer.classForCoder.description()] != nil && contains(specializedLayerKeys[layer.classForCoder.description()]!, key)) {
-                    
+                if vanillaLayerKeys.contains(key) ||
+                    (specializedLayerKeys[layer.classForCoder.description()] != nil && specializedLayerKeys[layer.classForCoder.description()]!.contains(key)) {
+                        
+                        var currentKeyValue: AnyObject? = layer.valueForKey(key)
+                        
+                        //exceptions
+                        if currentKeyValue == nil && key.hasSuffix("Color") {
+                            currentKeyValue = UIColor.clearColor().CGColor
+                        }
+                        
                         //found an animatable property - add the pending animation
-                        activeAnimationContexts.last!.pendingAnimations.append(
-                            PendingAnimation(layer: layer, keyPath: key, fromValue: layer.valueForKey(key)!
-                        )
-                    )
+                        if let currentKeyValue: AnyObject = currentKeyValue {
+                            activeContext.pendingAnimations.append(
+                                PendingAnimation(layer: layer, keyPath: key, fromValue: currentKeyValue)
+                            )
+                        }
                 }
+            } else {
+                activeContext.nrOfUIKitAnimations++
             }
         }
         
         return result
     }
-
-    // MARK: animateWithDuration replacements...
     
     class func EA_animateWithDuration(duration: NSTimeInterval, delay: NSTimeInterval, usingSpringWithDamping dampingRatio: CGFloat, initialSpringVelocity velocity: CGFloat, options: UIViewAnimationOptions, animations: () -> Void, completion: ((Bool) -> Void)?) {
         //create context
         let context = AnimationContext()
         context.duration = duration
-        context.delay = CACurrentMediaTime() + delay
+        context.delay = delay
         context.options = options
         context.springDamping = dampingRatio
         context.springVelocity = velocity
@@ -157,8 +195,17 @@ extension UIView {
         CATransaction.begin()
         CATransaction.setDisableActions(false)
         
+        var completionBlock: CompletionBlock? = nil
+        
         //spring animations
-        EA_animateWithDuration(duration, delay: delay, usingSpringWithDamping: dampingRatio, initialSpringVelocity: velocity, options: options, animations: animations, completion: completion)
+        if let completion = completion {
+            //wrap a completion block
+            completionBlock = CompletionBlock(context: context, completion: completion)
+            EA_animateWithDuration(duration, delay: delay, usingSpringWithDamping: dampingRatio, initialSpringVelocity: velocity, options: options, animations: animations, completion: completionBlock!.wrapCompletion)
+        } else {
+            //simply schedule the animation
+            EA_animateWithDuration(duration, delay: delay, usingSpringWithDamping: dampingRatio, initialSpringVelocity: velocity, options: options, animations: animations, completion: completion)
+        }
         
         //pop context
         activeAnimationContexts.removeLast()
@@ -172,11 +219,11 @@ extension UIView {
     }
     
     class func EA_animateWithDuration(duration: NSTimeInterval, delay: NSTimeInterval, options: UIViewAnimationOptions, animations: () -> Void, completion: ((Bool) -> Void)?) {
-
+        
         //create context
         let context = AnimationContext()
         context.duration = duration
-        context.delay = CACurrentMediaTime() + delay
+        context.delay = delay
         context.options = options
         
         //push context
@@ -186,8 +233,17 @@ extension UIView {
         CATransaction.begin()
         CATransaction.setDisableActions(false)
         
+        var completionBlock: CompletionBlock? = nil
+        
         //animations
-        EA_animateWithDuration(duration, delay: delay, options: options, animations: animations, completion: completion)
+        if let completion = completion {
+            //wrap a completion block
+            completionBlock = CompletionBlock(context: context, completion: completion)
+            EA_animateWithDuration(duration, delay: delay, options: options, animations: animations, completion: completionBlock!.wrapCompletion)
+        } else {
+            //simply schedule the animation
+            EA_animateWithDuration(duration, delay: delay, options: options, animations: animations, completion: nil)
+        }
         
         //pop context
         activeAnimationContexts.removeLast()
@@ -197,17 +253,28 @@ extension UIView {
             anim.layer.addAnimation(EA_animation(anim, context: context), forKey: nil)
         }
         
+        //try a timer now, than see about animation delegate
+        if let completionBlock = completionBlock where context.nrOfUIKitAnimations == 0 && context.pendingAnimations.count > 0 {
+            NSTimer.scheduledTimerWithTimeInterval(context.duration, target: self, selector: "EA_wrappedCompletionHandler:", userInfo: completionBlock, repeats: false)
+        }
+        
         CATransaction.commit()
     }
     
     class func EA_animateWithDuration(duration: NSTimeInterval, animations: () -> Void, completion: ((Bool) -> Void)?) {
-        animateWithDuration(duration, delay: 0.0, options: nil, animations: animations, completion: completion)
+        animateWithDuration(duration, delay: 0.0, options: [], animations: animations, completion: completion)
     }
     
     class func EA_animateWithDuration(duration: NSTimeInterval, animations: () -> Void) {
         animateWithDuration(duration, animations: animations, completion: nil)
     }
     
+    class func EA_wrappedCompletionHandler(timer: NSTimer) {
+        if let completionBlock = timer.userInfo as? CompletionBlock {
+            completionBlock.wrapCompletion(true)
+        }
+    }
+
     // MARK: create CA animation
     
     private class func EA_animation(pending: PendingAnimation, context: AnimationContext) -> CAAnimation {
@@ -216,24 +283,33 @@ extension UIView {
         
         if (context.springDamping > 0.0) {
             //create a layer spring animation
-            anim = RBBSpringAnimation(keyPath: pending.keyPath)
-            if let anim = anim as? RBBSpringAnimation {
-                
-                anim.from = pending.fromValue
-                anim.to = pending.layer.valueForKey(pending.keyPath)
 
-                //TODO: refine the spring animation setup
-                //lotta magic numbers to mimic UIKit springs
-                let epsilon = 0.001
-                anim.damping = -2.0 * log(epsilon) / context.duration
-                anim.stiffness = Double(pow(anim.damping, 2)) / Double(pow(context.springDamping * 2, 2))
-                anim.mass = 1.0
-                anim.velocity = 0.0
+            if #available(iOS 9, *) { // iOS9!
+                anim = CASpringAnimation(keyPath: pending.keyPath)
+                if let anim = anim as? CASpringAnimation {
+                    anim.fromValue = pending.fromValue
+                    anim.toValue = pending.layer.valueForKey(pending.keyPath)
 
-                //NSLog("mass: %.2f", anim.mass)
-                //NSLog("damping: %.2f", anim.damping)
-                //NSLog("velocity: %.2f", anim.velocity)
-                //NSLog("stiffness: %.2f", anim.stiffness)
+                    let epsilon = 0.001
+                    anim.damping = CGFloat(-2.0 * log(epsilon) / context.duration)
+                    anim.stiffness = CGFloat(pow(anim.damping, 2)) / CGFloat(pow(context.springDamping * 2, 2))
+                    anim.mass = 1.0
+                    anim.initialVelocity = 0.0
+                }
+            } else {
+                anim = RBBSpringAnimation(keyPath: pending.keyPath)
+                if let anim = anim as? RBBSpringAnimation {
+                    anim.from = pending.fromValue
+                    anim.to = pending.layer.valueForKey(pending.keyPath)
+                    
+                    //TODO: refine the spring animation setup
+                    //lotta magic numbers to mimic UIKit springs
+                    let epsilon = 0.001
+                    anim.damping = -2.0 * log(epsilon) / context.duration
+                    anim.stiffness = Double(pow(anim.damping, 2)) / Double(pow(context.springDamping * 2, 2))
+                    anim.mass = 1.0
+                    anim.velocity = 0.0
+                }
             }
         } else {
             //create property animation
@@ -243,33 +319,45 @@ extension UIView {
         }
         
         anim.duration = context.duration
-
-        if context.delay > 0 {
-            anim.beginTime = context.delay
+        
+        if context.delay > 0.0 {
+            anim.beginTime = context.currentTime + context.delay
             anim.fillMode = kCAFillModeBackwards
         }
         
         //options
         if let options = context.options?.rawValue {
             
-            anim.autoreverses = (options & UIViewAnimationOptions.Autoreverse.rawValue != 0)
-            if options & UIViewAnimationOptions.Repeat.rawValue != 0 {
-                anim.repeatCount = Float.infinity
+            if options & UIViewAnimationOptions.BeginFromCurrentState.rawValue == 0 { //only repeat if not in a chain
+                anim.autoreverses = (options & UIViewAnimationOptions.Autoreverse.rawValue == UIViewAnimationOptions.Autoreverse.rawValue)
+                anim.repeatCount = (options & UIViewAnimationOptions.Repeat.rawValue == UIViewAnimationOptions.Repeat.rawValue) ? Float.infinity : 0
             }
             
             //easing
             var timingFunctionName = kCAMediaTimingFunctionEaseInEaseOut
-
+            
             if options & UIViewAnimationOptions.CurveLinear.rawValue == UIViewAnimationOptions.CurveLinear.rawValue {
-                //first check for linear (so it takes up only 2 bits)
+                //first check for linear (it's this way to take up only 2 bits)
                 timingFunctionName = kCAMediaTimingFunctionLinear
             } else if options & UIViewAnimationOptions.CurveEaseIn.rawValue == UIViewAnimationOptions.CurveEaseIn.rawValue {
                 timingFunctionName = kCAMediaTimingFunctionEaseIn
             } else if options & UIViewAnimationOptions.CurveEaseOut.rawValue == UIViewAnimationOptions.CurveEaseOut.rawValue {
                 timingFunctionName = kCAMediaTimingFunctionEaseOut
             }
-
+            
             anim.timingFunction = CAMediaTimingFunction(name: timingFunctionName)
+            
+            //fill mode
+            if options & UIViewAnimationOptions.FillModeBoth.rawValue == UIViewAnimationOptions.FillModeBoth.rawValue {
+                //both
+                anim.fillMode = kCAFillModeBoth
+            } else if options & UIViewAnimationOptions.FillModeForwards.rawValue == UIViewAnimationOptions.FillModeForwards.rawValue {
+                //forward
+                anim.fillMode = (anim.fillMode == kCAFillModeBackwards) ? kCAFillModeBoth : kCAFillModeForwards
+            } else if options & UIViewAnimationOptions.FillModeBackwards.rawValue == UIViewAnimationOptions.FillModeBackwards.rawValue {
+                //backwards
+                anim.fillMode = kCAFillModeBackwards
+            }
         }
         
         return anim
@@ -278,15 +366,15 @@ extension UIView {
     // MARK: chain animations
     
     /**
-        Creates and runs an animation which allows other animations to be chained to it and to each other.
-
-        :param: duration The animation duration in seconds
-        :param: delay The delay before the animation starts
-        :param: options A UIViewAnimationOptions bitmask (check UIView.animationWithDuration:delay:options:animations:completion: for more info)
-        :param: animations Animation closure
-        :param: completion Completion closure of type (Bool)->Void
+    Creates and runs an animation which allows other animations to be chained to it and to each other.
     
-        :returns: The created request.
+    :param: duration The animation duration in seconds
+    :param: delay The delay before the animation starts
+    :param: options A UIViewAnimationOptions bitmask (check UIView.animationWithDuration:delay:options:animations:completion: for more info)
+    :param: animations Animation closure
+    :param: completion Completion closure of type (Bool)->Void
+    
+    :returns: The created request.
     */
     public class func animateAndChainWithDuration(duration: NSTimeInterval, delay: NSTimeInterval, options: UIViewAnimationOptions, animations: () -> Void, completion: ((Bool) -> Void)?) -> EAAnimationDelayed {
         
@@ -305,10 +393,43 @@ extension UIView {
         
         return currentAnimation.nextDelayedAnimation!
     }
+
+    /**
+    Creates and runs an animation which allows other animations to be chained to it and to each other.
+    
+    :param: duration The animation duration in seconds
+    :param: delay The delay before the animation starts
+    :param: usingSpringWithDamping the spring damping
+    :param: initialSpringVelocity initial velocity of the animation
+    :param: options A UIViewAnimationOptions bitmask (check UIView.animationWithDuration:delay:options:animations:completion: for more info)
+    :param: animations Animation closure
+    :param: completion Completion closure of type (Bool)->Void
+    
+    :returns: The created request.
+    */
+    public class func animateAndChainWithDuration(duration: NSTimeInterval, delay: NSTimeInterval, usingSpringWithDamping dampingRatio: CGFloat, initialSpringVelocity velocity: CGFloat, options: UIViewAnimationOptions, animations: () -> Void, completion: ((Bool) -> Void)?) -> EAAnimationDelayed {
+        
+        let currentAnimation = EAAnimationDelayed()
+        currentAnimation.duration = duration
+        currentAnimation.delay = delay
+        currentAnimation.options = options
+        currentAnimation.animations = animations
+        currentAnimation.completion = completion
+        currentAnimation.springDamping = dampingRatio
+        currentAnimation.springVelocity = velocity
+        
+        currentAnimation.nextDelayedAnimation = EAAnimationDelayed()
+        currentAnimation.nextDelayedAnimation!.prevDelayedAnimation = currentAnimation
+        currentAnimation.run()
+        
+        EAAnimationDelayed.animations.append(currentAnimation)
+        
+        return currentAnimation.nextDelayedAnimation!
+    }
 }
 
 extension CALayer {
-    // MARK: setup CALayer
+    // MARK: CALayer animations
     
     override public static func initialize() {
         super.initialize()
@@ -329,24 +450,32 @@ extension CALayer {
     public func EA_actionForKey(key: String!) -> CAAction! {
         
         //check if the layer has a view-delegate
-        if let delegate = delegate as? UIView {
+        if let _ = delegate as? UIView {
             return EA_actionForKey(key) // -> this passes the ball to UIView.actionForLayer:forKey:
         }
         
         //create a custom easy animation and add it to the animation stack
-        if activeAnimationContexts.count > 0 {
-            
-            if contains(vanillaLayerKeys, key) ||
-                (specializedLayerKeys[self.classForCoder.description()] != nil && contains(specializedLayerKeys[self.classForCoder.description()]!, key)) {
-                    
-                    //found an animatable property - add the pending animation
-                    activeAnimationContexts.last!.pendingAnimations.append(
-                        PendingAnimation(layer: self, keyPath: key, fromValue: self.valueForKey(key)!
-                        )
-                    )
-            }
+        if let activeContext = activeAnimationContexts.last where
+            vanillaLayerKeys.contains(key) ||
+                (specializedLayerKeys[self.classForCoder.description()] != nil &&
+                    specializedLayerKeys[self.classForCoder.description()]!.contains(key)) {
+                        
+                        var currentKeyValue: AnyObject? = valueForKey(key)
+                        
+                        //exceptions
+                        if currentKeyValue == nil && key.hasSuffix("Color") {
+                            currentKeyValue = UIColor.clearColor().CGColor
+                        }
+                        
+                        //found an animatable property - add the pending animation
+                        if let currentKeyValue: AnyObject = currentKeyValue {
+                            activeContext.pendingAnimations.append(
+                                PendingAnimation(layer: self, keyPath: key, fromValue: currentKeyValue
+                                )
+                            )
+                        }
         }
-
+        
         return nil
     }
 }
