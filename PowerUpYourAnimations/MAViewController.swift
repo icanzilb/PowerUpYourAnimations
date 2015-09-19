@@ -45,7 +45,7 @@ class MAViewController: UIViewController {
         selection.path = UIBezierPath(rect: selectionRect).CGPath
         
         //let the ants march!
-        UIView.animateWithDuration(0.5, delay: 0.0, options: .CurveLinear | .Repeat, animations: {
+        UIView.animateWithDuration(0.5, delay: 0.0, options: [.CurveLinear, .Repeat], animations: {
             self.selection.lineDashPhase = 8.0
             }, completion: nil)
         

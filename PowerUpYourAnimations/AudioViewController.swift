@@ -29,7 +29,7 @@ class AudioViewController: UIViewController {
         
         r.addSublayer(dot)
 
-        UIView.animateWithDuration(0.5, delay: 0.0, options: .CurveEaseOut | .Repeat | .Autoreverse, animations: {
+        UIView.animateWithDuration(0.5, delay: 0.0, options: [.CurveEaseOut, .Repeat, .Autoreverse], animations: {
             dot.transform = CATransform3DMakeScale(1.4, 10, 1.0)
             }, completion: nil)
 
@@ -37,7 +37,7 @@ class AudioViewController: UIViewController {
         r.instanceDelay = 0.1
         r.instanceTransform = CATransform3DMakeTranslation(20.0, 0.0, 0.0)
         
-        UIView.animateWithDuration(1.25, delay: 0.0, options: .Repeat | .Autoreverse, animations: {
+        UIView.animateWithDuration(1.25, delay: 0.0, options: [.Repeat, .Autoreverse], animations: {
             r.instanceTransform = CATransform3DMakeTranslation(10.0, 0.0, 0.0)
         }, completion: nil)
 

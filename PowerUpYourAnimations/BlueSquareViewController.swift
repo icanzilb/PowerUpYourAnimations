@@ -25,7 +25,7 @@ class BlueSquareViewController: UIViewController {
             self.blueSquare.layer.cornerRadius = 0.0
             self.blueSquare.layer.borderWidth = 5.0
             
-        }, completion: nil).animateWithDuration(1.0, delay: 0.0, usingSpringWithDamping: 0.33, initialSpringVelocity: 0.0, options: nil, animations: {
+        }, completion: nil).animateWithDuration(1.0, delay: 0.0, usingSpringWithDamping: 0.33, initialSpringVelocity: 0.0, options: [], animations: {
             
             self.blueSquare.transform = CGAffineTransformConcat(
                 CGAffineTransformMakeScale(1.33, 1.33),

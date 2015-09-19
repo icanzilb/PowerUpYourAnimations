@@ -33,7 +33,7 @@ class TableCellAnimator: NSObject, UIViewControllerAnimatedTransitioning {
         
         let duration = transitionDuration(transitionContext)
         
-        UIView.animateAndChainWithDuration(duration/4, delay: 0.0, options: nil, animations: {
+        UIView.animateAndChainWithDuration(NSTimeInterval(duration/4), delay: NSTimeInterval(0.0), options: [], animations: {
             //1st animation
             fromVC.view.transform = CGAffineTransformMakeTranslation(-width, 0.0)
             
