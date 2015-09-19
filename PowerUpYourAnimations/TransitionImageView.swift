@@ -26,6 +26,14 @@ class TransitionImageView: UIImageView {
             fatalError("You need to have set an image, provide a new image and a mask to fire up a transition")
         }
         
+        guard let
+            filter = filter,
+            image = image,
+            maskImage = maskImage
+        else {
+            return
+        }
+        
         filter.setValue(CIImage(image: image),
             forKey: kCIInputImageKey)
         filter.setValue(CIImage(image: toImage),
@@ -40,19 +48,25 @@ class TransitionImageView: UIImageView {
         transitionStartTime = CACurrentMediaTime()
         
         displayLink = CADisplayLink(target: self, selector: Selector("timerFired:"))
-        displayLink!.addToRunLoop(NSRunLoop.mainRunLoop(), forMode: NSDefaultRunLoopMode)
+        displayLink?.addToRunLoop(NSRunLoop.mainRunLoop(), forMode: NSDefaultRunLoopMode)
     }
     
     func timerFired(link: CADisplayLink) {
 
         let progress = (CACurrentMediaTime() - transitionStartTime) / duration
-        filter.setValue(progress, forKey: kCIInputTimeKey)
-        image = UIImage(CIImage: filter.outputImage,
-            scale: UIScreen.mainScreen().scale,
-            orientation: UIImageOrientation.Up)
+        
+        if let 
+            filter = filter, 
+            outputImage = filter.outputImage 
+        {
+            filter.setValue(progress, forKey: kCIInputTimeKey)
+            image = UIImage(CIImage: outputImage,
+                scale: UIScreen.mainScreen().scale,
+                orientation: UIImageOrientation.Up)
+        }
         
         if CACurrentMediaTime() > transitionStartTime + duration {
-            image = filter.valueForKey(kCIInputTargetImageKey) as? UIImage
+            image = filter?.valueForKey(kCIInputTargetImageKey) as? UIImage
             link.invalidate()
         }
     }

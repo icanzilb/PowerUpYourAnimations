@@ -10,30 +10,36 @@ import UIKit
 
 class TableCellAnimator: NSObject, UIViewControllerAnimatedTransitioning {
     
-    func transitionDuration(transitionContext: UIViewControllerContextTransitioning) -> NSTimeInterval {
+    func transitionDuration(transitionContext: UIViewControllerContextTransitioning?) -> NSTimeInterval {
         return 1.0
     }
     
     func animateTransition(transitionContext: UIViewControllerContextTransitioning) {
         
-        let fromVC = transitionContext.viewControllerForKey(UITransitionContextFromViewControllerKey) as! FlightsViewController
-        let toVC = transitionContext.viewControllerForKey(UITransitionContextToViewControllerKey) as! FlightDetailsViewController
+        guard let
+            fromVC = transitionContext.viewControllerForKey(UITransitionContextFromViewControllerKey) 
+                as? FlightsViewController,
+            toVC = transitionContext.viewControllerForKey(UITransitionContextToViewControllerKey) 
+                as? FlightDetailsViewController 
+        else {
+            return
+        }
         
-        transitionContext.containerView().insertSubview(toVC.view, belowSubview: fromVC.view)
+        transitionContext.containerView()?.insertSubview(toVC.view, belowSubview: fromVC.view)
         
         //make a snapshot of the selected cell
         let cellView = fromVC.selectedCellSnapshot()
-        transitionContext.containerView().addSubview(cellView)
+        transitionContext.containerView()?.addSubview(cellView)
 
         
         let width = fromVC.view.bounds.size.width
         toVC.view.transform = CGAffineTransformMakeTranslation(width, 0.0)
 
-        (UIApplication.sharedApplication().windows.first as! UIWindow).backgroundColor = UIColor.whiteColor()
+        UIApplication.sharedApplication().windows.first?.backgroundColor = UIColor.whiteColor()
         
         let duration = transitionDuration(transitionContext)
         
-        UIView.animateAndChainWithDuration(duration/4, delay: 0.0, options: nil, animations: {
+        UIView.animateAndChainWithDuration(NSTimeInterval(duration/4), delay: NSTimeInterval(0.0), options: [], animations: {
             //1st animation
             fromVC.view.transform = CGAffineTransformMakeTranslation(-width, 0.0)
             

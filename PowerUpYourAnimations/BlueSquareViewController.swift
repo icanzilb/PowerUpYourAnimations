@@ -18,14 +18,14 @@ class BlueSquareViewController: UIViewController {
         //view.transform = CGAffineTransformMakeScale(2.5, 2.5)
     }
     
-    override func touchesEnded(touches: Set<NSObject>, withEvent event: UIEvent) {
+    override func touchesEnded(touches: Set<UITouch>, withEvent event: UIEvent?) {
         
         UIView.animateAndChainWithDuration(0.25, delay: 0.0, options: .CurveEaseOut, animations: {
             self.blueSquare.transform = CGAffineTransformMakeScale(0.8, 0.8)
             self.blueSquare.layer.cornerRadius = 0.0
             self.blueSquare.layer.borderWidth = 5.0
             
-        }, completion: nil).animateWithDuration(1.0, delay: 0.0, usingSpringWithDamping: 0.33, initialSpringVelocity: 0.0, options: nil, animations: {
+        }, completion: nil).animateWithDuration(1.0, delay: 0.0, usingSpringWithDamping: 0.33, initialSpringVelocity: 0.0, options: [], animations: {
             
             self.blueSquare.transform = CGAffineTransformConcat(
                 CGAffineTransformMakeScale(1.33, 1.33),

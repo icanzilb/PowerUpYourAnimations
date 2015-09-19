@@ -30,11 +30,12 @@ class MAViewController: UIViewController {
         selection.lineDashPattern = [5, 3]
     }
  
-    override func touchesMoved(touches: Set<NSObject>, withEvent event: UIEvent) {
+    override func touchesMoved(touches: Set<UITouch>, withEvent event: UIEvent?) {
         super.touchesMoved(touches, withEvent: event)
         
         // make the selection frame rect
-        let location = (touches.first as! UITouch).locationInView(view)
+        guard let location = touches.first?.locationInView(view) else {return}
+        
         let selectionRect = CGRect(
             x: view.center.x - abs(location.x - view.center.x),
             y: view.center.y - abs(location.y - view.center.y),
@@ -45,7 +46,7 @@ class MAViewController: UIViewController {
         selection.path = UIBezierPath(rect: selectionRect).CGPath
         
         //let the ants march!
-        UIView.animateWithDuration(0.5, delay: 0.0, options: .CurveLinear | .Repeat, animations: {
+        UIView.animateWithDuration(0.5, delay: 0.0, options: [.CurveLinear, .Repeat], animations: {
             self.selection.lineDashPhase = 8.0
             }, completion: nil)
         
