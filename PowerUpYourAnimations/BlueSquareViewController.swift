@@ -18,7 +18,7 @@ class BlueSquareViewController: UIViewController {
         //view.transform = CGAffineTransformMakeScale(2.5, 2.5)
     }
     
-    override func touchesEnded(touches: Set<NSObject>, withEvent event: UIEvent) {
+    override func touchesEnded(touches: Set<UITouch>, withEvent event: UIEvent?) {
         
         UIView.animateAndChainWithDuration(0.25, delay: 0.0, options: .CurveEaseOut, animations: {
             self.blueSquare.transform = CGAffineTransformMakeScale(0.8, 0.8)

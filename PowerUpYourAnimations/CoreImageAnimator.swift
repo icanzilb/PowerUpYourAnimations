@@ -19,7 +19,7 @@ class CoreImageAnimator: UIPercentDrivenInteractiveTransition, UIViewControllerA
     var presenting = true
     var interactive = false
     
-    func transitionDuration(transitionContext: UIViewControllerContextTransitioning) -> NSTimeInterval {
+    func transitionDuration(transitionContext: UIViewControllerContextTransitioning?) -> NSTimeInterval {
         return animationDuration
     }
     

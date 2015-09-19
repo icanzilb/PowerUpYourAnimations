@@ -30,7 +30,7 @@ class MAViewController: UIViewController {
         selection.lineDashPattern = [5, 3]
     }
  
-    override func touchesMoved(touches: Set<NSObject>, withEvent event: UIEvent) {
+    override func touchesMoved(touches: Set<UITouch>, withEvent event: UIEvent?) {
         super.touchesMoved(touches, withEvent: event)
         
         // make the selection frame rect
