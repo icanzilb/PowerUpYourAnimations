@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>name</key>
+		<string>Afternoon mellow</string>
+		<key>style</key>
+		<string>jazz</string>
+		<key>songs</key>
+		<array>
+			<string>downtown.m4a</string>
+			<string>sofast.m4a</string>
+			<string>seductionplay.m4a</string>
+		</array>
+	</dict>
+	<dict>
+		<key>name</key>
+		<string>Heavy guitars</string>
+		<key>style</key>
+		<string>speed metal</string>
+		<key>songs</key>
+		<array>
+			<string>downtown.m4a</string>
+			<string>sofast.m4a</string>
+			<string>seductionplay.m4a</string>
+		</array>
+	</dict>
+	<dict>
+		<key>name</key>
+		<string>Radiohead</string>
+		<key>style</key>
+		<string>remixes</string>
+		<key>songs</key>
+		<array>
+			<string>downtown.m4a</string>
+			<string>sofast.m4a</string>
+			<string>seductionplay.m4a</string>
+		</array>
+	</dict>
+	<dict>
+		<key>name</key>
+		<string>Hipster fiesta</string>
+		<key>style</key>
+		<string>electro</string>
+		<key>songs</key>
+		<array>
+			<string>downtown.m4a</string>
+			<string>sofast.m4a</string>
+			<string>seductionplay.m4a</string>
+		</array>
+	</dict>
+</array>
+</plist>

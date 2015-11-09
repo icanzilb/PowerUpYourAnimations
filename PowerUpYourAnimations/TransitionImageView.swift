@@ -13,7 +13,7 @@ class TransitionImageView: UIImageView {
     
     @IBInspectable var duration: Double = 2.0
     
-    private let filter = CIFilter(name: "CIDisintegrateWithMaskTransition")
+    private let filter = CIFilter(name: "CIDisintegrateWithMaskTransition")!
     
     private var transitionStartTime: CFTimeInterval = 0.0
     private var displayLink: CADisplayLink?
@@ -22,7 +22,7 @@ class TransitionImageView: UIImageView {
     
     func transitionToImage(toImage: UIImage) {
         
-        if image == nil || maskImage == nil {
+        guard let image = image, let maskImage = maskImage else {
             fatalError("You need to have set an image, provide a new image and a mask to fire up a transition")
         }
         
@@ -47,7 +47,7 @@ class TransitionImageView: UIImageView {
 
         let progress = (CACurrentMediaTime() - transitionStartTime) / duration
         filter.setValue(progress, forKey: kCIInputTimeKey)
-        image = UIImage(CIImage: filter.outputImage,
+        image = UIImage(CIImage: filter.outputImage!,
             scale: UIScreen.mainScreen().scale,
             orientation: UIImageOrientation.Up)
         

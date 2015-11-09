@@ -8,24 +8,25 @@
 
 import Foundation
 
-struct FlightModel {
+struct PlaylistModel {
     
-    let departTime: String
-    let arrivalTime: String
-    let price: String
+    let name: String
+    let style: String
+    let songs: [String]
     
-    static func allFlights() -> [FlightModel] {
-        var result:[FlightModel] = []
+    static func allPlaylists() -> [PlaylistModel] {
+        var result:[PlaylistModel] = []
         let list = NSArray(contentsOfFile:
-            NSBundle.pathForResource("flights",
+            NSBundle.pathForResource("playlists",
                 ofType: "plist",
                 inDirectory: NSBundle.mainBundle().resourcePath!)!)!
         for dictObj in list {
             let dict = dictObj as! NSDictionary
             result.append(
-                FlightModel(departTime: dict["departing"] as! String,
-                    arrivalTime: dict["arriving"] as! String,
-                    price: dict["price"] as! String))
+                PlaylistModel(
+                    name: dict["name"] as! String,
+                    style: dict["style"] as! String,
+                    songs: dict["songs"] as! Array))
         }
         return result
     }

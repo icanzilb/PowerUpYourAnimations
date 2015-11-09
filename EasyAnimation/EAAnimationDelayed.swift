@@ -26,12 +26,12 @@
 import UIKit
 
 /**
-    A class that is used behind the scene to chain and/or delay animations.
-    You do not need to create instances directly - they are created automatically when you use
-    animateWithDuration:animation: and the like.
+A class that is used behind the scene to chain and/or delay animations.
+You do not need to create instances directly - they are created automatically when you use
+animateWithDuration:animation: and the like.
 */
 
-public class EAAnimationDelayed: Equatable, Printable {
+public class EAAnimationDelayed: Equatable, CustomStringConvertible {
     
     /* debug helpers */
     private var debug: Bool = false
@@ -41,32 +41,61 @@ public class EAAnimationDelayed: Equatable, Printable {
     /* animation properties */
     var duration: CFTimeInterval = 0.0
     var delay: CFTimeInterval = 0.0
-    var options: UIViewAnimationOptions? = nil
+    var options: UIViewAnimationOptions = []
     var animations: (() -> Void)?
     var completion: ((Bool) -> Void)?
+    
+    var identifier: String
     
     var springDamping: CGFloat = 0.0
     var springVelocity: CGFloat = 0.0
     
     private var loopsChain = false
     
+    private static var cancelCompletions: [String: ()->Void] = [:]
+    
     /* animation chain links */
-    var prevDelayedAnimation: EAAnimationDelayed?
+    var prevDelayedAnimation: EAAnimationDelayed? {
+        didSet {
+            if let prev = prevDelayedAnimation {
+                identifier = prev.identifier
+            }
+        }
+    }
     var nextDelayedAnimation: EAAnimationDelayed?
     
+    //MARK: - Animation lifecycle
+    
+    init() {
+        EAAnimationDelayed.debugCount++
+        self.debugNumber = EAAnimationDelayed.debugCount
+        if debug {
+            print("animation #\(self.debugNumber)")
+        }
+        self.identifier = NSUUID().UUIDString
+    }
+    
+    deinit {
+        if debug {
+            print("deinit \(self)")
+        }
+    }
+    
     /**
-        An array of all "root" animations for all currently animating chains. I.e. this array contains
-        the first link in each currently animating chain. Handy if you want to cancel all chains - just
-        loop over `animations` and call `cancelAnimationChain` on each one.
+    An array of all "root" animations for all currently animating chains. I.e. this array contains
+    the first link in each currently animating chain. Handy if you want to cancel all chains - just
+    loop over `animations` and call `cancelAnimationChain` on each one.
     */
     public static var animations: [EAAnimationDelayed] = []
+    
+    //MARK: Animation methods
     
     public func animateWithDuration(duration: NSTimeInterval, animations: () -> Void) -> EAAnimationDelayed {
         return animateWithDuration(duration, animations: animations, completion: completion)
     }
     
     public func animateWithDuration(duration: NSTimeInterval, animations: () -> Void, completion: ((Bool) -> Void)?) -> EAAnimationDelayed {
-        return animateWithDuration(duration, delay: delay, options: nil, animations: animations, completion: completion)
+        return animateWithDuration(duration, delay: delay, options: [], animations: animations, completion: completion)
     }
     
     public func animateWithDuration(duration: NSTimeInterval, delay: NSTimeInterval, options: UIViewAnimationOptions, animations: () -> Void, completion: ((Bool) -> Void)?) -> EAAnimationDelayed {
@@ -74,13 +103,18 @@ public class EAAnimationDelayed: Equatable, Printable {
     }
     
     public func animateWithDuration(duration: NSTimeInterval, delay: NSTimeInterval, usingSpringWithDamping dampingRatio: CGFloat, initialSpringVelocity velocity: CGFloat, options: UIViewAnimationOptions, animations: () -> Void, completion: ((Bool) -> Void)?) -> EAAnimationDelayed {
-        var anim = animateAndChainWithDuration(duration, delay: delay, options: options, animations: animations, completion: completion)
+        let anim = animateAndChainWithDuration(duration, delay: delay, options: options, animations: animations, completion: completion)
         self.springDamping = dampingRatio
         self.springVelocity = velocity
         return anim
     }
     
-    public func animateAndChainWithDuration(duration: NSTimeInterval, delay: NSTimeInterval, options: UIViewAnimationOptions, animations: () -> Void, completion: ((Bool) -> Void)?) -> EAAnimationDelayed {
+    public func animateAndChainWithDuration(duration: NSTimeInterval, delay: NSTimeInterval, var options: UIViewAnimationOptions, animations: () -> Void, completion: ((Bool) -> Void)?) -> EAAnimationDelayed {
+        
+        if options.contains(.Repeat) {
+            options.remove(.Repeat)
+            loopsChain = true
+        }
         
         self.duration = duration
         self.delay = delay
@@ -88,34 +122,34 @@ public class EAAnimationDelayed: Equatable, Printable {
         self.animations = animations
         self.completion = completion
         
-        if let options = self.options?.rawValue {
-            if options & UIViewAnimationOptions.Repeat.rawValue != 0 {
-                self.options = UIViewAnimationOptions(rawValue: self.options!.rawValue & ~UIViewAnimationOptions.Repeat.rawValue)
-                self.loopsChain = true
-            }
-        }
-        
-        self.nextDelayedAnimation = EAAnimationDelayed()
-        self.nextDelayedAnimation!.prevDelayedAnimation = self
-        return self.nextDelayedAnimation!
+        nextDelayedAnimation = EAAnimationDelayed()
+        nextDelayedAnimation!.prevDelayedAnimation = self
+        return nextDelayedAnimation!
     }
     
+    //MARK: - Animation control methods
+    
     /**
-        A method to cancel the animation chain of the current animation.
-        This method cancels and removes all animations that are chained to each other in one chain.
-        The animations will not stop immediately - the currently running animation will finish and then 
-        the complete chain will be stopped and removed.
+    A method to cancel the animation chain of the current animation.
+    This method cancels and removes all animations that are chained to each other in one chain.
+    The animations will not stop immediately - the currently running animation will finish and then
+    the complete chain will be stopped and removed.
+    
+    :param: completion completion closure
     */
-    public func cancelAnimationChain() {
+    
+    public func cancelAnimationChain(completion completion: (()->Void)? = nil) {
+        EAAnimationDelayed.cancelCompletions[identifier] = completion
+        
         var link = self
         while link.nextDelayedAnimation != nil {
             link = link.nextDelayedAnimation!
         }
-
+        
         link.detachFromChain()
-
+        
         if debug {
-            println("cancelled top animation: \(link)")
+            print("cancelled top animation: \(link)")
         }
     }
     
@@ -123,14 +157,14 @@ public class EAAnimationDelayed: Equatable, Printable {
         self.nextDelayedAnimation = nil
         if let previous = self.prevDelayedAnimation {
             if debug {
-                println("dettach \(self)")
+                print("dettach \(self)")
             }
-            self.prevDelayedAnimation?.nextDelayedAnimation = nil
-            self.prevDelayedAnimation?.detachFromChain()
+            previous.nextDelayedAnimation = nil
+            previous.detachFromChain()
         } else {
-            if let index = find(EAAnimationDelayed.animations, self) {
+            if let index = EAAnimationDelayed.animations.indexOf(self) {
                 if debug {
-                    println("cancel root animation #\(EAAnimationDelayed.animations[index])")
+                    print("cancel root animation #\(EAAnimationDelayed.animations[index])")
                 }
                 EAAnimationDelayed.animations.removeAtIndex(index)
             }
@@ -139,20 +173,40 @@ public class EAAnimationDelayed: Equatable, Printable {
     }
     
     func run() {
+        if debug {
+            print("run animation #\(debugNumber)")
+        }
+        //TODO: Check if layer-only animations fire a proper completion block
         if let animations = animations {
-            if self.springDamping > 0.0 {
-                //spring animation
-                UIView.animateWithDuration(self.duration, delay: self.delay, usingSpringWithDamping: self.springDamping, initialSpringVelocity: self.springVelocity, options: self.options ?? nil, animations: animations, completion: self.animationCompleted)
-            } else {
-                //basic animation
-                UIView.animateWithDuration(self.duration, delay: self.delay, options: self.options ?? nil, animations: animations, completion: self.animationCompleted)
+            options.insert(.BeginFromCurrentState)
+            let animationDelay = dispatch_time(DISPATCH_TIME_NOW, Int64( Double(NSEC_PER_SEC) * self.delay ))
+            
+            dispatch_after(animationDelay, dispatch_get_main_queue()) {
+                if self.springDamping > 0.0 {
+                    //spring animation
+                    UIView.animateWithDuration(self.duration, delay: 0, usingSpringWithDamping: self.springDamping, initialSpringVelocity: self.springVelocity, options: self.options, animations: animations, completion: self.animationCompleted)
+                } else {
+                    //basic animation
+                    UIView.animateWithDuration(self.duration, delay: 0, options: self.options, animations: animations, completion: self.animationCompleted)
+                }
             }
         }
     }
     
     private func animationCompleted(finished: Bool) {
         
+        //animation's own completion
         self.completion?(finished)
+        
+        //chain has been cancelled
+        if let cancelCompletion = EAAnimationDelayed.cancelCompletions[identifier] {
+            if debug {
+                print("run chain cancel completion")
+            }
+            cancelCompletion()
+            detachFromChain()
+            return
+        }
         
         //check for .Repeat
         if finished && self.loopsChain {
@@ -162,7 +216,7 @@ public class EAAnimationDelayed: Equatable, Printable {
                 link = link.prevDelayedAnimation!
             }
             if debug {
-                println("loop to \(link)")
+                print("loop to \(link)")
             }
             link.run()
             return
@@ -178,24 +232,10 @@ public class EAAnimationDelayed: Equatable, Printable {
         
     }
     
-    init() {
-        EAAnimationDelayed.debugCount++
-        self.debugNumber = EAAnimationDelayed.debugCount
-        if debug {
-            println("animation #\(self.debugNumber)")
-        }
-    }
-    
-    deinit {
-        if debug {
-            println("deinit \(self)")
-        }
-    }
-    
     public var description: String {
         get {
             if debug {
-                return "animation #\(self.debugNumber) prev: \(self.prevDelayedAnimation?.debugNumber) next: \(self.nextDelayedAnimation?.debugNumber)"
+                return "animation #\(self.debugNumber) [\(self.identifier)] prev: \(self.prevDelayedAnimation?.debugNumber) next: \(self.nextDelayedAnimation?.debugNumber)"
             } else {
                 return "<EADelayedAnimation>"
             }

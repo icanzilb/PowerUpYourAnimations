@@ -8,10 +8,10 @@
 
 import UIKit
 
-class FlightCell: UITableViewCell {
+class PlaylistCell: UITableViewCell {
 
-    @IBOutlet weak var departTime: UILabel!
-    @IBOutlet weak var arrivalTime: UILabel!
-    @IBOutlet weak var price: UILabel!
+    @IBOutlet weak var name: UILabel!
+    @IBOutlet weak var style: UILabel!
+    @IBOutlet weak var songs: UILabel!
 
 }

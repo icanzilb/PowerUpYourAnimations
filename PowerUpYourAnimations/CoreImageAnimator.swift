@@ -19,7 +19,7 @@ class CoreImageAnimator: UIPercentDrivenInteractiveTransition, UIViewControllerA
     var presenting = true
     var interactive = false
     
-    func transitionDuration(transitionContext: UIViewControllerContextTransitioning) -> NSTimeInterval {
+    func transitionDuration(transitionContext: UIViewControllerContextTransitioning?) -> NSTimeInterval {
         return animationDuration
     }
     
@@ -29,11 +29,11 @@ class CoreImageAnimator: UIPercentDrivenInteractiveTransition, UIViewControllerA
             
             // PRESENT
             
-            let nav = transitionContext.viewControllerForKey(UITransitionContextFromViewControllerKey) as! UINavigationController
-            let fromVC = nav.topViewController as! TimelineViewController
+            //let nav = transitionContext.viewControllerForKey(UITransitionContextFromViewControllerKey) as! UINavigationController
+            //let fromVC = nav.topViewController as! TimelineViewController
             let toVC = transitionContext.viewControllerForKey(UITransitionContextToViewControllerKey) as! PhotoDetailViewController
             
-            transitionContext.containerView().addSubview(toVC.view)
+            transitionContext.containerView()!.addSubview(toVC.view)
             
             toVC.view.backgroundColor = UIColor.clearColor()
             toVC.imageView.center.y += 20.0
@@ -51,9 +51,8 @@ class CoreImageAnimator: UIPercentDrivenInteractiveTransition, UIViewControllerA
             // DISMISS
             
             let fromVC = transitionContext.viewControllerForKey(UITransitionContextFromViewControllerKey)! as! PhotoDetailViewController
-            let nav = transitionContext.viewControllerForKey(UITransitionContextToViewControllerKey) as! UINavigationController
-            let toVC = nav.topViewController as! TimelineViewController
-            
+            //let nav = transitionContext.viewControllerForKey(UITransitionContextToViewControllerKey) as! UINavigationController
+            //let toVC = nav.topViewController as! TimelineViewController
             
             UIView.animateWithDuration(animationDuration, delay: 0.0, options: .CurveEaseIn, animations: {
                 
